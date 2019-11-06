@@ -196,7 +196,7 @@ class ApproximateQAgent(PacmanQAgent):
         "*** YOUR CODE HERE ***"
         value = 0
         features = self.featExtractor.getFeatures(state, action)
-        
+        #for every value in the feature, increment it by its weight times itself.
         for key in features:
           valueFea = features[key]
           weightFea = self.weights[key]
@@ -211,7 +211,7 @@ class ApproximateQAgent(PacmanQAgent):
         "*** YOUR CODE HERE ***"
         nextActions = self.getLegalActions(nextState)
         nextQvalues = []
-
+        #same as above, get the highest qValue for none terminal state.
         if not nextActions:
           nextMax = 0
         else:
@@ -219,6 +219,15 @@ class ApproximateQAgent(PacmanQAgent):
             nextQvalues.append(self.getQValue(nextState,nextAction))
           nextMax = max(nextQvalues)
         
+        sample = reward + self.discount*nextMax
+        difference = sample - self.getQValue(state, action)
+        features = self.featExtractor.getFeatures(state, action)
+
+        for key in features:
+          #add value to features using "key" as key
+          valueFea = features[key]
+          self.weights[key] += self.alpha * valueFea * difference
+
 
     def final(self, state):
         "Called at the end of each game."
