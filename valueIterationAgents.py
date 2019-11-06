@@ -178,4 +178,91 @@ class PrioritizedSweepingValueIterationAgent(AsynchronousValueIterationAgent):
 
     def runValueIteration(self):
         "*** YOUR CODE HERE ***"
+        fringe = util.PriorityQueue()
+        # 獲取所有的狀態
+        states = self.mdp.getStates()
+        # 新建一個空字典，表示前一個狀態
+        predecessors = {}
+        # 遍歷所有的狀態，每一個時刻t的狀態爲tSate
+        for tState in states:
+            # 初始化集合，集合中的元素不重複
+            previous = set()
+            for state in states:
+                # 獲取狀態下一個可能的動作
+                actions = self.mdp.getPossibleActions(state)
+                # 遍歷每一個動作
+                for action in actions:
+                    # 獲取當前狀態下一個動作的狀態及概率
+                    transitions = self.mdp.getTransitionStatesAndProbs(state, action)
+                    # 遍歷當前下一個動作到達下一個狀態、概率
+                    for next, probability in transitions:
+                        # 如果概率不等於0，
+                        if probability != 0:
+                            # t時刻的等態對於下一個時刻的狀態 ，則在前一個狀態集中加入狀態
+                            if tState == next:
+                                previous.add(state)
+            # 給前一個狀態賦值
+            predecessors[tState] = previous
+        # 遍歷每一個狀態
+        for state in states:
+            # 如果當前狀態不是終端狀態
+            if self.mdp.isTerminal(state) == False:
+                # 獲取狀態的值
+                current = self.values[state]
+                qValues = []
+                # 獲所有的狀態。
+                actions = self.mdp.getPossibleActions(state)
+                # 遍歷狀態中的下一個動作,計算Q值。
+                for action in actions:
+                    tempValue = self.computeQValueFromValues(state, action)
+                    qValues = qValues + [tempValue]
+                # 獲取最大的Q值。
+                maxQvalue = max(qValues)
+                # s的當前值與s的所有可能操作中的最高Q值之間的差的絕對值
+                diff = current - maxQvalue
+                # 轉爲負數
+                if diff > 0:
+                    diff = diff * -1
+                # 將當前狀態入優先隊列
+                fringe.push(state, diff)
+        # 進行循環迭代
+        for i in range(0, self.iterations):
+            # 如果優先隊列爲空，則中斷
+            if fringe.isEmpty():
+                break
+            # 獲取隊列中的元素
+            s = fringe.pop()
+            # 如果獲取的狀態不是終端狀態
+            if not self.mdp.isTerminal(s):
+                values = []
+                # 遍歷當前狀態的下一個可能的動作
+                for action in self.mdp.getPossibleActions(s):
+                    value = 0
+                    # 獲取當前狀態下一個動作的狀態及概率
+                    for next, prob in self.mdp.getTransitionStatesAndProbs(s, action):
+                        # 獲取狀態下一個動作到達下一個狀態的獎勵
+                        reward = self.mdp.getReward(s, action, next)
+                        # 計算value值
+                        value = value + (prob * (reward + (self.discount * self.values[next])))
+                    values.append(value)
+                # 將最大的value值作爲當前狀態的value值
+                self.values[s] = max(values)
 
+            # 遍歷當前狀態的前一個狀態列表集中的每一個狀態
+            for previous in predecessors[s]:
+                # 獲取前一個狀態的values值
+                current = self.values[previous]
+                qValues = []
+                # 遍歷前一個狀態的可能的下一個動作,計算qValues
+                for action in self.mdp.getPossibleActions(previous):
+                    qValues += [self.computeQValueFromValues(previous, action)]
+                # 獲取qValues的最大值
+                maxQ = max(qValues)
+                # 計算兩者的差值的絕對值
+                diff = abs((current - maxQ))
+                if (diff > self.theta):
+                    # 更新優先隊列
+                    # 如果項目已在優先級較高的隊列中，請更新其優先級並重建堆。
+                    # 如果項目已經在優先級相同或較低的隊列中，則不執行任何操作。
+                    # 如果項目不在優先級隊列中，請執行與self.push相同的操作。入優先隊列三元組：(priority, count, item)
+                    fringe.update(previous, -diff)
